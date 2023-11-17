@@ -28,6 +28,7 @@ async function run() {
     await client.connect();
 
 
+    // menu collection
     const menuCollection = client.db("teast-treat").collection("menu");
 
     app.get("/menu", async(req,res)=>{
@@ -35,7 +36,30 @@ async function run() {
         res.send(result)
     })
 
+    //  review collection
+    const reviewsCollection = client.db("teast-treat").collection("reviews");
 
+    app.get("/reviews", async(req,res)=>{
+        const result = await reviewsCollection.find().toArray();
+        res.send(result)
+    })
+
+     // menu collection
+     const cartCollection = client.db("teast-treat").collection("carts");
+
+     app.get("/carts", async(req,res)=>{
+      const email = req.query.email;
+      const query = {email : email}
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+     })
+
+
+    app.post("/carts", async(req,res)=>{
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
+    })
 
 
 
