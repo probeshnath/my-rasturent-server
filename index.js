@@ -62,10 +62,31 @@ async function run() {
 
     app.delete("/carts/:id",async(req,res)=>{
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = {_id: new ObjectId(id)} 
       const result = await cartCollection.deleteOne(query)
       res.send(result)
     })
+
+      //  user collection
+      const userCollection = client.db("teast-treat").collection("users");
+
+      app.get("/users", async(req, res)=>{
+        const result = await userCollection.find().toArray()
+        res.send(result)
+      })
+
+      app.post("/users", async(req,res)=>{
+        const user = req.body;
+        // inser email if user does not exist
+        const query = { email: user.email}
+        const existingUser = await userCollection.findOne(query)
+        if(existingUser){
+          return res.send({message: "user already Exist"})
+        }
+
+        const result = await userCollection.insertOne(user);
+        res.send(result)
+      })
 
 
     // Send a ping to confirm a successful connection
