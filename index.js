@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors')
 require('dotenv').config();
 const jwt = require("jsonwebtoken");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware 
@@ -70,6 +71,53 @@ async function run() {
       next()
     }
 
+    // payment intent 
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, "amount insent")
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      })
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // menu collection
+    const paymentCollection = client.db("teast-treat").collection("payments");
+
+
+    // 
+    app.get('/payments/:email', verifyToken, async(req,res)=>{
+      const email = req.params.email;
+      const query = {email : email}
+
+      if(req.params.email !== req.decoded.email){
+        return res.status(403).send({message: "Forbidden access"})
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    })
+
+    // payment history create api
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+      console.log("payments Info",payment)
+      
+      const query = {
+        _id:{
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      }
+      const deleteResult = await cartCollection.deleteMany(query);
+      res.send({paymentResult,deleteResult});
+    })
+
 
     // menu collection
     const menuCollection = client.db("teast-treat").collection("menu");
@@ -112,12 +160,12 @@ async function run() {
       }
     });
 
-    app.patch("/menu/:id", async(req,res)=>{
+    app.patch("/menu/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: id}
+      const filter = { _id: id }
       const item = req.body;
       const updatedDoc = {
-        $set:{
+        $set: {
           name: item.name,
           category: item.category,
           price: item.price,
